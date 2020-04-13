@@ -1,0 +1,20 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# IDE
+.idea/
+
+# build
+build/
+
+# log
+*.log
+
+*_default
