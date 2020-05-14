@@ -75,7 +75,7 @@ func TestFilter3(t *testing.T) {
 
 func TestFilterForArray(t *testing.T) {
 	fieldFilter := NewFieldFilter(nil)
-	err := fieldFilter.Parse("1 in (root[ * ].a)")
+	err := fieldFilter.Parse("isarray(root[ * ].a)")
 	if err != nil {
 		t.Error(err)
 		t.Fail()

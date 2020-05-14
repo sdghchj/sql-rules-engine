@@ -620,3 +620,23 @@ func (*functor) Iif(args []interface{}) (ret interface{}) {
 	}
 	return args[2]
 }
+
+func (*functor) IsArray(args []interface{}) (ret interface{}) {
+	if len(args) == 0 || args[0] == nil {
+		return false
+	}
+
+	switch reflect.ValueOf(args[0]).Kind() {
+	case reflect.Slice, reflect.Array:
+		return true
+	default:
+		return false
+	}
+}
+
+func (*functor) IsObject(args []interface{}) (ret interface{}) {
+	if len(args) == 0 || args[0] == nil {
+		return false
+	}
+	return reflect.ValueOf(args[0]).Kind() == reflect.Map
+}

@@ -98,6 +98,7 @@ func (goParser) translateSqlWhere(where string) string {
 			if i > 0 && i+1 < length && tokens[i-1].tok == token.LBRACK && tokens[i+1].tok == token.RBRACK {
 				tokens[i].tok = token.INT
 				tokens[i].lit = "-1"
+				need = true
 			}
 		case token.ASSIGN:
 			tokens[i].lit = "=="
