@@ -640,3 +640,50 @@ func (*functor) IsObject(args []interface{}) (ret interface{}) {
 	}
 	return reflect.ValueOf(args[0]).Kind() == reflect.Map
 }
+
+func (f *functor) First(args []interface{}) interface{} {
+	if f.IsArray(args) != true {
+		return nil
+	}
+	v := reflect.ValueOf(args[0])
+	if len(args) <= 1 {
+		return v.Index(0).Interface()
+	}
+	fv, err := utils.GetFloat64(args[1])
+	if err != nil {
+		return nil
+	}
+	i := int(int64(fv))
+	if i > v.Len() {
+		i = v.Len()
+	}
+	ret := make([]interface{}, i)
+	for i := 0; i < len(ret); i++ {
+		ret[i] = v.Index(i).Interface()
+	}
+	return ret
+}
+
+func (f *functor) Last(args []interface{}) interface{} {
+	if f.IsArray(args) != true {
+		return nil
+	}
+	v := reflect.ValueOf(args[0])
+	if len(args) <= 1 {
+		return v.Index(v.Len() - 1).Interface()
+	}
+	fv, err := utils.GetFloat64(args[1])
+	if err != nil {
+		return nil
+	}
+	i := int(int64(fv))
+	if i > v.Len() {
+		i = v.Len()
+	}
+	ret := make([]interface{}, i)
+	i = v.Len() - i
+	for ; i < len(ret); i++ {
+		ret[i] = v.Index(i).Interface()
+	}
+	return ret
+}
