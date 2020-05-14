@@ -129,10 +129,58 @@ func TestJsonEngineConvert(t *testing.T) {
 	fmt.Println(string(jsonText))
 }
 
+func TestJsonEngineConvertFromArray(t *testing.T) {
+	eng := NewJsonEngine(true).RegisterRuleFunction("clientid", func(i rule.Rule) func([]interface{}) interface{} {
+		return func([]interface{}) interface{} {
+			return i.Name()
+		}
+	})
+
+	_, err := eng.ParseSql(`select "3" as a.a,
+								'hello' as a.b,
+								Sum(root[0].b.c) as a.c,
+								Substr(root[0].c,2,4) as a.d,
+								string(year(currenttimestamp())) as a.e,
+								* as a.f,
+								ceil(1.5) as c.a,
+								max(root[0].b.c) as c.b,
+								min(root[0].b.c) as c.c,
+								array(1,root[0].a,3) as c.d,
+								root[0].b.f,
+								root[0].b.c as b.c,
+								clientid() as c.e,
+								root[0].b.c[2] + root[0].b.c[3] as b.b 
+							from "aaa/bbb"
+							where root[0].a < 2 and root[0].b.c[4] = 5 and root[0].e.f = 2`)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+		return
+	}
+
+	text := `[{"a":1,"b":{"c":[1,2,3,4,5]},"c":"123456789","e":{"f":2}}]`
+
+	jsonText, err := eng.ConvertJson("aaa/bbb", text)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	}
+	fmt.Println(string(jsonText))
+
+	text = `[{"a":5,"b":{"c":[6,5,4,3,2,1]},"c":"987654321"}]`
+
+	jsonText, err = eng.ConvertJson("aaa/bbb", text)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	}
+	fmt.Println(string(jsonText))
+}
+
 func TestJsonEngineEvent(t *testing.T) {
 	eng := NewJsonEngine(true)
 
-	_, err := eng.ParseRuleAsyncEvent("aaa", `a < 2 && b.c[4] == 5 && e.f == 2`, func(src map[string]interface{}) {
+	_, err := eng.ParseRuleAsyncEvent("aaa", `a < 2 && b.c[4] == 5 && e.f == 2`, func(src interface{}) {
 
 		fmt.Println("do some work")
 	})
