@@ -39,10 +39,13 @@ func (goParser) translateSqlWhere(where string) string {
 			tokens = append(tokens, &sqlToken{pos, tok, lit})
 		}
 	}
+	if tokens == nil {
+		return ""
+	}
 
 	length := len(tokens)
 
-	for i := 1; i < length; i++ {
+	for i := 0; i < length; i++ {
 		switch tokens[i].tok {
 		case token.IDENT, token.INT, token.FLOAT, token.STRING, token.CHAR:
 			break
@@ -67,16 +70,26 @@ func (goParser) translateSqlWhere(where string) string {
 			}
 
 			if strings.EqualFold(tokens[i].lit, "and") {
+				tokens[i].tok = token.LAND
 				tokens[i].lit = "&&"
 				need = true
 			} else if strings.EqualFold(tokens[i].lit, "or") {
+				tokens[i].tok = token.LOR
 				tokens[i].lit = "||"
 				need = true
 			} else if strings.EqualFold(tokens[i].lit, "not") {
+				tokens[i].tok = token.NOT
 				tokens[i].lit = "!"
 				need = true
 			} else if strings.EqualFold(tokens[i].lit, "null") {
 				tokens[i].lit = "nil"
+				need = true
+			} else if i > 0 && i+1 < length && strings.EqualFold(tokens[i].lit, "in") && tokens[i-1].tok >= token.IDENT && tokens[i-1].tok <= token.STRING && tokens[i+1].lit == "(" {
+				temp := tokens[i-1]
+				tokens[i-1] = tokens[i]
+				tokens[i] = tokens[i+1]
+				tokens[i+1] = temp
+				tokens[i+1].lit += ","
 				need = true
 			}
 			break

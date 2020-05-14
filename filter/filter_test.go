@@ -72,3 +72,16 @@ func TestFilter3(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestFilterForArray(t *testing.T) {
+	fieldFilter := NewFieldFilter(nil)
+	err := fieldFilter.Parse("root[0].a < 2")
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	}
+	ret := fieldFilter.Match([]map[string]interface{}{{"a": 1, "b": 5, "c": 3}, {"a": 2, "b": 6, "c": 4}})
+	if !ret {
+		t.Fail()
+	}
+}

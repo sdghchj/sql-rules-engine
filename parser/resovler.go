@@ -7,10 +7,11 @@ import (
 	"go/token"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type Resolver interface {
-	Evaluate(src map[string]interface{}) interface{}
+	Evaluate(obj interface{}) interface{}
 }
 
 type goResolver struct {
@@ -22,11 +23,11 @@ func NewGoResolver(node ast.Expr, funcs function.Functions) Resolver {
 	return &goResolver{node: node, funcs: funcs}
 }
 
-func (r *goResolver) Evaluate(src map[string]interface{}) interface{} {
-	return r.visit(r.node, &src)
+func (r *goResolver) Evaluate(obj interface{}) interface{} {
+	return r.visit(r.node, obj)
 }
 
-func (r *goResolver) visitBinaryExpression(exp *ast.BinaryExpr, src *map[string]interface{}) (ret interface{}) {
+func (r *goResolver) visitBinaryExpression(exp *ast.BinaryExpr, obj interface{}) (ret interface{}) {
 	defer func() {
 		if err := recover(); err != nil {
 			ret = nil
@@ -35,7 +36,7 @@ func (r *goResolver) visitBinaryExpression(exp *ast.BinaryExpr, src *map[string]
 
 	var bx, by interface{}
 	if exp.Y != nil {
-		by = r.visit(exp.Y, src)
+		by = r.visit(exp.Y, obj)
 	}
 
 	switch exp.Op {
@@ -47,7 +48,7 @@ func (r *goResolver) visitBinaryExpression(exp *ast.BinaryExpr, src *map[string]
 		if !y {
 			return y
 		}
-		bx = r.visit(exp.X, src)
+		bx = r.visit(exp.X, obj)
 		if bx == nil {
 			return false
 		}
@@ -61,7 +62,7 @@ func (r *goResolver) visitBinaryExpression(exp *ast.BinaryExpr, src *map[string]
 			}
 		}
 
-		bx = r.visit(exp.X, src)
+		bx = r.visit(exp.X, obj)
 		if bx == nil {
 			return false
 		}
@@ -74,7 +75,7 @@ func (r *goResolver) visitBinaryExpression(exp *ast.BinaryExpr, src *map[string]
 	}
 
 	if exp.X != nil {
-		bx = r.visit(exp.X, src)
+		bx = r.visit(exp.X, obj)
 		if bx == nil {
 			goto InterfaceEqual
 		}
@@ -152,14 +153,19 @@ InterfaceEqual:
 	return nil
 }
 
-func (r *goResolver) visitArrayIndexExpression(exp *ast.IndexExpr, src *map[string]interface{}) (ret interface{}) {
-	val := r.visit(exp.X, src)
+func (r *goResolver) visitArrayIndexExpression(exp *ast.IndexExpr, obj interface{}) (ret interface{}) {
+	val := r.visit(exp.X, obj)
 	if val == nil {
-		return nil
+		//root means root of obj
+		if idt, ok := exp.X.(*ast.Ident); ok && strings.EqualFold(idt.Name, "root") {
+			val = obj
+		} else {
+			return nil
+		}
 	}
 	valValue := reflect.ValueOf(val)
 
-	index := r.visit(exp.Index, src)
+	index := r.visit(exp.Index, obj)
 	if index == nil {
 		return nil
 	}
@@ -181,7 +187,7 @@ func (r *goResolver) visitArrayIndexExpression(exp *ast.IndexExpr, src *map[stri
 	return
 }
 
-func (r *goResolver) visitFuncExpression(exp *ast.CallExpr, src *map[string]interface{}) (ret interface{}) {
+func (r *goResolver) visitFuncExpression(exp *ast.CallExpr, obj interface{}) (ret interface{}) {
 	defer func() {
 		if err := recover(); err != nil {
 			ret = nil
@@ -200,7 +206,7 @@ func (r *goResolver) visitFuncExpression(exp *ast.CallExpr, src *map[string]inte
 		args = make([]interface{}, length)
 	}
 	for i, arg := range exp.Args {
-		args[i] = r.visit(arg, src)
+		args[i] = r.visit(arg, obj)
 	}
 
 	if r.funcs != nil && r.funcs.Exists(ident.Name) {
@@ -212,10 +218,10 @@ func (r *goResolver) visitFuncExpression(exp *ast.CallExpr, src *map[string]inte
 	return ret
 }
 
-func (r *goResolver) visit(node ast.Expr, src *map[string]interface{}) interface{} {
+func (r *goResolver) visit(node ast.Expr, obj interface{}) interface{} {
 	switch exp := node.(type) {
 	case *ast.BinaryExpr:
-		return r.visitBinaryExpression(exp, src)
+		return r.visitBinaryExpression(exp, obj)
 	case *ast.BasicLit:
 		switch exp.Kind {
 		case token.INT:
@@ -243,13 +249,15 @@ func (r *goResolver) visit(node ast.Expr, src *map[string]interface{}) interface
 		case "false":
 			return false
 		default:
-			if val, ok := (*src)[exp.Name]; ok {
-				return val
+			if mp, ok := obj.(map[string]interface{}); ok {
+				if val, ok := mp[exp.Name]; ok {
+					return val
+				}
 			}
 		}
 		break
 	case *ast.SelectorExpr:
-		sel := r.visit(exp.X, src)
+		sel := r.visit(exp.X, obj)
 		if sel != nil {
 			if mp, ok := sel.(map[string]interface{}); ok {
 				if val, ok := mp[exp.Sel.Name]; ok {
@@ -259,21 +267,21 @@ func (r *goResolver) visit(node ast.Expr, src *map[string]interface{}) interface
 		}
 		break
 	case *ast.CallExpr:
-		return r.visitFuncExpression(exp, src)
+		return r.visitFuncExpression(exp, obj)
 		break
 	case *ast.IndexExpr:
-		return r.visitArrayIndexExpression(exp, src)
+		return r.visitArrayIndexExpression(exp, obj)
 		break
 	case *ast.UnaryExpr:
 		if exp.Op == token.NOT {
-			val := r.visit(exp.X, src)
+			val := r.visit(exp.X, obj)
 			if val != nil {
 				if b, ok := val.(bool); ok {
 					return !b
 				}
 			}
 		} else if exp.Op == token.XOR {
-			val := r.visit(exp.X, src)
+			val := r.visit(exp.X, obj)
 			if val != nil {
 				if n, err := utils.GetFloat64(val); err == nil {
 					return ^int64(n)
@@ -282,7 +290,7 @@ func (r *goResolver) visit(node ast.Expr, src *map[string]interface{}) interface
 		}
 		return nil
 	case *ast.ParenExpr:
-		return r.visit(exp.X, src)
+		return r.visit(exp.X, obj)
 	default:
 		return nil
 	}

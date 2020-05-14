@@ -20,8 +20,8 @@ type Rule interface {
 	AddConvertHandlerBySql(sql string, funcs function.Functions) error
 	AddHandler(cvt handler.Handler) Rule
 	InsertHandler(index int, cvt handler.Handler) Rule
-	Handle(map[string]interface{}) map[string]interface{}
-	HandleAsync(map[string]interface{})
+	Handle(obj interface{}) interface{}
+	HandleAsync(obj interface{})
 	ConvertJson(jsonText string) (string, error)
 }
 
@@ -59,42 +59,42 @@ func (r *jsonRule) InsertHandler(index int, cvt handler.Handler) Rule {
 	return r
 }
 
-func (r *jsonRule) Handle(src map[string]interface{}) map[string]interface{} {
+func (r *jsonRule) Handle(obj interface{}) interface{} {
 	for _, cvt := range r.handlers {
-		if src == nil {
+		if obj == nil {
 			break
 		}
-		src = cvt.Handle(src)
+		obj = cvt.Handle(obj)
 	}
-	return src
+	return obj
 }
 
-func (r *jsonRule) HandleAsync(src map[string]interface{}) {
+func (r *jsonRule) HandleAsync(obj interface{}) {
 	for _, cvt := range r.handlers {
-		cvt.HandleAsync(src)
+		cvt.HandleAsync(obj)
 	}
 }
 
 func (r *jsonRule) ConvertJson(jsonText string) (string, error) {
 	decoder := json.NewDecoder(strings.NewReader(jsonText))
 	//decoder.UseNumber()
-	src := map[string]interface{}{}
-	err := decoder.Decode(&src)
+	var obj interface{}
+	err := decoder.Decode(&obj)
 	if err != nil {
 		return "", err
 	}
 
 	for _, cvt := range r.handlers {
-		if src == nil {
+		if obj == nil {
 			break
 		}
-		src = cvt.Handle(src)
+		obj = cvt.Handle(obj)
 	}
 	var bin []byte
 	if r.pretty {
-		bin, err = json.MarshalIndent(&src, "", "    ")
+		bin, err = json.MarshalIndent(obj, "", "    ")
 	} else {
-		bin, err = json.Marshal(&src)
+		bin, err = json.Marshal(obj)
 	}
 
 	if err != nil {

@@ -162,15 +162,16 @@ func AdjustKeyPath(keyPath string) string {
 	return string(key)
 }
 
-func GetByPath(obj map[string]interface{}, keyPath string) interface{} {
+func GetByPath(obj interface{}, keyPath string) interface{} {
 	keys := strings.Split(keyPath, ".")
 	var val interface{}
-	var ok bool
 	for _, k := range keys {
 		if obj != nil {
-			if val, ok = obj[k]; ok {
-				obj, _ = val.(map[string]interface{})
-				continue
+			if mp, ok := obj.(map[string]interface{}); ok {
+				if val, ok = mp[k]; ok {
+					obj, _ = val.(map[string]interface{})
+					continue
+				}
 			}
 		}
 		return nil

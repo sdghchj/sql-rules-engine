@@ -7,7 +7,7 @@ import (
 )
 
 type FieldValueConverter interface {
-	ConvertValue(map[string]interface{}) interface{}
+	ConvertValue(obj interface{}) interface{}
 	ConvertToPath() string
 }
 
@@ -16,7 +16,7 @@ type fromCurrentTimestampFieldValue struct {
 	convert func(interface{}) interface{}
 }
 
-func (v *fromCurrentTimestampFieldValue) ConvertValue(src map[string]interface{}) interface{} {
+func (v *fromCurrentTimestampFieldValue) ConvertValue(obj interface{}) interface{} {
 	t := time.Now().Unix()
 	if v.convert != nil {
 		return v.convert(t)
@@ -33,7 +33,7 @@ type constantFieldValue struct {
 	toPath string
 }
 
-func (v *constantFieldValue) ConvertValue(src map[string]interface{}) interface{} {
+func (v *constantFieldValue) ConvertValue(obj interface{}) interface{} {
 	return v.value
 }
 
@@ -48,17 +48,17 @@ type funcFieldValueConverter struct {
 	convert  func(interface{}) interface{}
 }
 
-func (v *funcFieldValueConverter) ConvertValue(src map[string]interface{}) interface{} {
+func (v *funcFieldValueConverter) ConvertValue(obj interface{}) interface{} {
 	if v.fromPath == "*" {
-		return src
+		return obj
 	} else if utils.IsLiteralString(v.fromPath) {
 		return utils.LiteralString(v.fromPath)
 	} else if utils.IsLiteralNumber(v.fromPath) {
 		utils.LiteralNumber(v.fromPath)
 	} else if v.resolver != nil {
-		return v.resolver.Evaluate(src)
+		return v.resolver.Evaluate(obj)
 	}
-	val := utils.GetByPath(src, v.fromPath)
+	val := utils.GetByPath(obj, v.fromPath)
 	if v.convert != nil {
 		val = v.convert(val)
 	}
@@ -78,7 +78,7 @@ type fromMultipleFieldValue struct {
 	convert   func([]interface{}) interface{}
 }
 
-func (v *fromMultipleFieldValue) ConvertValue(src map[string]interface{}) interface{} {
+func (v *fromMultipleFieldValue) ConvertValue(obj interface{}) interface{} {
 	n := len(v.fromPaths)
 	if n == 0 {
 		return nil
@@ -90,11 +90,11 @@ func (v *fromMultipleFieldValue) ConvertValue(src map[string]interface{}) interf
 	i := 0
 	for path, resolver := range v.fromPaths {
 		if path == "*" {
-			values[i] = src
+			values[i] = obj
 		} else if resolver != nil {
-			values[i] = resolver.Evaluate(src)
+			values[i] = resolver.Evaluate(obj)
 		} else {
-			values[i] = utils.GetByPath(src, path)
+			values[i] = utils.GetByPath(obj, path)
 		}
 		i++
 	}

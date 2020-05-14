@@ -11,7 +11,7 @@ import (
 type FieldFilter interface {
 	handler.Handler
 	Parse(match string, handlers ...handler.EventHandler) error
-	Match(src map[string]interface{}) bool
+	Match(obj interface{}) bool
 	MatchJson(json string) bool
 	ParseForAsyncHandlers(match string, asyncHandlers ...handler.AsyncEventHandler) error
 }
@@ -48,9 +48,9 @@ func (f *fieldFilter) ParseForAsyncHandlers(match string, asyncHandlers ...handl
 	return nil
 }
 
-func (f *fieldFilter) Match(src map[string]interface{}) bool {
+func (f *fieldFilter) Match(obj interface{}) bool {
 	if f.resolver != nil {
-		ret := f.resolver.Evaluate(src)
+		ret := f.resolver.Evaluate(obj)
 		if ret == nil {
 			return false
 		}
@@ -64,7 +64,7 @@ func (f *fieldFilter) Match(src map[string]interface{}) bool {
 func (f *fieldFilter) MatchJson(jsonText string) bool {
 	decoder := json.NewDecoder(strings.NewReader(jsonText))
 	//decoder.UseNumber()
-	src := map[string]interface{}{}
+	var src interface{}
 	err := decoder.Decode(&src)
 	if err != nil {
 		return false
@@ -72,23 +72,23 @@ func (f *fieldFilter) MatchJson(jsonText string) bool {
 	return f.Match(src)
 }
 
-func (f *fieldFilter) Handle(src map[string]interface{}) map[string]interface{} {
-	if f.Match(src) {
+func (f *fieldFilter) Handle(obj interface{}) interface{} {
+	if f.Match(obj) {
 		if f.handlers != nil && len(f.handlers) > 0 {
 			for _, handler := range f.handlers {
-				src = handler(src)
+				obj = handler(obj)
 			}
 		}
-		return src
+		return obj
 	}
 	return nil
 }
 
-func (f *fieldFilter) HandleAsync(src map[string]interface{}) {
-	if f.Match(src) {
+func (f *fieldFilter) HandleAsync(obj interface{}) {
+	if f.Match(obj) {
 		if f.asyncHandlers != nil && len(f.asyncHandlers) > 0 {
 			for _, handler := range f.asyncHandlers {
-				go handler(src)
+				go handler(obj)
 			}
 		}
 	}

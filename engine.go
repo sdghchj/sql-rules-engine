@@ -17,7 +17,7 @@ type Engine interface {
 	RegisterRuleFunction(name string, fun func(rule.Rule) func(values []interface{}) interface{}) Engine
 	PutRule(name string, rule rule.Rule) Engine
 	//Handle(map[string]interface{}) map[string]interface{}
-	HandleAsync(map[string]interface{})
+	HandleAsync(obj interface{})
 	HandleJsonAsync(jsonText string) error
 	ConvertJson(name string, jsonText string) (string, error)
 }
@@ -104,10 +104,10 @@ func (e *jsonEngine) PutRule(name string, rule rule.Rule) Engine {
 	return src
 }*/
 
-func (e *jsonEngine) HandleAsync(src map[string]interface{}) {
+func (e *jsonEngine) HandleAsync(obj interface{}) {
 	e.rules.Range(func(key, value interface{}) bool {
 		if r, ok := value.(rule.Rule); ok {
-			r.HandleAsync(src)
+			r.HandleAsync(obj)
 		}
 		return true
 	})

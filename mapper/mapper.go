@@ -125,15 +125,15 @@ func (m *mapper) AddFieldFromMultiplePath(fromKeyPaths []string, toKeyPath strin
 	return nil
 }
 
-func (m *mapper) Handle(src map[string]interface{}) map[string]interface{} {
+func (m *mapper) Handle(obj interface{}) interface{} {
 	if m == nil {
 		return nil
 	} else if len(m.fields) == 0 {
 		return map[string]interface{}{}
 	}
-	ret := map[string]interface{}{}
+	ret := make(map[string]interface{})
 	for _, v := range m.fields {
-		val := v.ConvertValue(src)
+		val := v.ConvertValue(obj)
 		if val == nil {
 			continue //skip
 		}
@@ -149,6 +149,6 @@ func (m *mapper) Handle(src map[string]interface{}) map[string]interface{} {
 	return ret
 }
 
-func (f *mapper) HandleAsync(src map[string]interface{}) {
+func (f *mapper) HandleAsync(obj interface{}) {
 
 }
