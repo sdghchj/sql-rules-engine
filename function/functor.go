@@ -384,32 +384,33 @@ func (*functor) In(args []interface{}) (ret interface{}) {
 		}
 	}()
 
+	arr := args[1:]
 	if length == 2 {
-		arrayType := reflect.ValueOf(args[1])
-		n := arrayType.Len()
-		for i := 0; i < n; i++ {
-			if arrayType.Index(i).Interface() == args[0] {
+		arr = nil
+		var ok bool
+		if arr, ok = args[1].([]interface{}); !ok {
+			arrayType := reflect.ValueOf(args[1])
+			n := arrayType.Len()
+			for i := 1; i < n; i++ {
+				arr = append(arr, arrayType.Index(i).Interface())
+			}
+		}
+	}
+	//really fuck golang's type and json take all number as float64 by default
+	if num, err := utils.GetFloat64(args[0]); err == nil {
+		var rnum float64
+		for _, arg := range args {
+			if rnum, err = utils.GetFloat64(arg); err == nil && math.Abs(num-rnum) < DIFF {
 				return true
 			}
 		}
 	} else {
-		//really fuck golang's type and json take all number as float64 by default
-		if num, err := utils.GetFloat64(args[0]); err == nil {
-			var rnum float64
-			for i := 1; i < length; i++ {
-				if rnum, err = utils.GetFloat64(args[i]); err == nil && math.Abs(num-rnum) < DIFF {
-					return true
-				}
-			}
-		} else {
-			for i := 1; i < length; i++ {
-				if args[0] == args[i] {
-					return true
-				}
+		for _, arg := range args {
+			if args[0] == arg {
+				return true
 			}
 		}
 	}
-
 	return false
 }
 

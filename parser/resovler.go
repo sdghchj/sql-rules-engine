@@ -165,6 +165,13 @@ func (r *goResolver) visitArrayIndexExpression(exp *ast.IndexExpr, obj interface
 	}
 	valValue := reflect.ValueOf(val)
 
+	//in case of array[-1], return all elements of val
+	if unary, ok := exp.Index.(*ast.UnaryExpr); ok {
+		if _, ok := unary.X.(*ast.BasicLit); ok && unary.Op == token.SUB {
+			return val
+		}
+	}
+
 	index := r.visit(exp.Index, obj)
 	if index == nil {
 		return nil
@@ -257,13 +264,22 @@ func (r *goResolver) visit(node ast.Expr, obj interface{}) interface{} {
 		}
 		break
 	case *ast.SelectorExpr:
-		sel := r.visit(exp.X, obj)
-		if sel != nil {
-			if mp, ok := sel.(map[string]interface{}); ok {
+		x := r.visit(exp.X, obj)
+		if x == nil {
+			return nil
+		}
+		if mp, ok := x.(map[string]interface{}); ok {
+			if val, ok := mp[exp.Sel.Name]; ok {
+				return val
+			}
+		} else if arrMap, ok := x.([]map[string]interface{}); ok {
+			var ret []interface{}
+			for _, mp := range arrMap {
 				if val, ok := mp[exp.Sel.Name]; ok {
-					return val
+					ret = append(ret, val)
 				}
 			}
+			return ret
 		}
 		break
 	case *ast.CallExpr:
@@ -273,19 +289,22 @@ func (r *goResolver) visit(node ast.Expr, obj interface{}) interface{} {
 		return r.visitArrayIndexExpression(exp, obj)
 		break
 	case *ast.UnaryExpr:
-		if exp.Op == token.NOT {
-			val := r.visit(exp.X, obj)
-			if val != nil {
-				if b, ok := val.(bool); ok {
-					return !b
-				}
+		x := r.visit(exp.X, obj)
+		if x == nil {
+			return x
+		}
+		switch exp.Op {
+		case token.NOT:
+			if b, ok := x.(bool); ok {
+				return !b
 			}
-		} else if exp.Op == token.XOR {
-			val := r.visit(exp.X, obj)
-			if val != nil {
-				if n, err := utils.GetFloat64(val); err == nil {
-					return ^int64(n)
-				}
+		case token.SUB:
+			if n, err := utils.GetFloat64(x); err == nil {
+				return -n
+			}
+		case token.XOR:
+			if n, err := utils.GetFloat64(x); err == nil {
+				return ^int64(n)
 			}
 		}
 		return nil

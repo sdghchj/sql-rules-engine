@@ -84,7 +84,8 @@ func (goParser) translateSqlWhere(where string) string {
 			} else if strings.EqualFold(tokens[i].lit, "null") {
 				tokens[i].lit = "nil"
 				need = true
-			} else if i > 0 && i+1 < length && strings.EqualFold(tokens[i].lit, "in") && tokens[i-1].tok >= token.IDENT && tokens[i-1].tok <= token.STRING && tokens[i+1].lit == "(" {
+			} else if i > 0 && i+1 < length && strings.EqualFold(tokens[i].lit, "in") && tokens[i-1].tok >= token.IDENT && tokens[i-1].tok <= token.STRING && tokens[i+1].tok == token.LPAREN {
+				// val in (comma separated array)
 				temp := tokens[i-1]
 				tokens[i-1] = tokens[i]
 				tokens[i] = tokens[i+1]
@@ -93,6 +94,11 @@ func (goParser) translateSqlWhere(where string) string {
 				need = true
 			}
 			break
+		case token.MUL:
+			if i > 0 && i+1 < length && tokens[i-1].tok == token.LBRACK && tokens[i+1].tok == token.RBRACK {
+				tokens[i].tok = token.INT
+				tokens[i].lit = "-1"
+			}
 		case token.ASSIGN:
 			tokens[i].lit = "=="
 			need = true
